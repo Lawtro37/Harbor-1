@@ -87,34 +87,44 @@ export function BetaChannelRow() {
   );
 }
 
+function getStatusText(u: ReturnType<typeof useUpdate>, t: ReturnType<typeof useT>): string {
+  if (u.intent === "return-beta") {
+    return t("Continue the return to beta in Experimental builds below.");
+  }
+  switch (u.status) {
+    case "checking":
+      return t("Checking harborcommunity.site for a newer build.");
+    case "downloading":
+      return t("Downloading {pct}%", { pct: Math.round(u.progress * 100) });
+    case "downloaded":
+      return t("Downloaded. Ready to install and restart.");
+    case "installing":
+      return t("Installing. Harbor will restart.");
+    case "available":
+      return t("A new version is ready to download.");
+    case "unavailable":
+      return u.error?.toString() || t("Couldn't check for updates. Try again in a moment.");
+    case "uptodate":
+      return u.channel === "experimental"
+        ? t("No newer experimental build is available for this device.")
+        : t("You're on the latest version.");
+    case "error":
+      return u.manualCheck
+        ? t("Couldn't reach the update server. Try again in a moment.")
+        : t("Harbor checks automatically every few hours.");
+    default:
+      return "Something went wrong. ¯\\_(ツ)_/¯";
+  }
+}
+
 export function UpdatesRow() {
   const t = useT();
   const u = useUpdate();
   const installedExperimental = readBetaReturnContext(__APP_VERSION__);
   const ready = u.intent !== "return-beta" && updateAvailable(u);
   const busy = u.intent === "return-beta" || u.status === "checking" || u.status === "installing";
-  const status =
-    u.intent === "return-beta"
-      ? t("Continue the return to beta in Experimental builds below.")
-      : u.status === "checking"
-        ? t("Checking harborcommunity.site for a newer build.")
-        : u.status === "downloading"
-          ? t("Downloading {pct}%", { pct: Math.round(u.progress * 100) })
-          : u.status === "downloaded"
-            ? t("Downloaded. Ready to install and restart.")
-            : u.status === "installing"
-              ? t("Installing. Harbor will restart.")
-              : u.status === "available"
-                ? t("A new version is ready to download.")
-                : u.status === "unavailable"
-                  ? u.error
-                  : u.status === "uptodate"
-                    ? u.channel === "experimental"
-                      ? t("No newer experimental build is available for this device.")
-                      : t("You're on the latest version.")
-                    : u.status === "error" && u.manualCheck
-                      ? t("Couldn't reach the update server. Try again in a moment.")
-                      : t("Harbor checks automatically every few hours.");
+  const status = getStatusText(u, t);
+
   return (
     <SettingRow
       icon={
